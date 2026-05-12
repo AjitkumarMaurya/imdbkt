@@ -1,6 +1,6 @@
 # imdb-kt
 
-[![CI](https://github.com/ajitkumarmaurya/imdb-kt/actions/workflows/ci.yml/badge.svg)](https://github.com/ajitkumarmaurya/imdb-kt/actions/workflows/ci.yml)
+[![CI](https://github.com/AjitkumarMaurya/imdbkt/actions/workflows/ci.yml/badge.svg)](https://github.com/AjitkumarMaurya/imdbkt/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.ajitkumarmaurya/imdb-kt)](https://central.sonatype.com/artifact/io.github.ajitkumarmaurya/imdb-kt)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.21-purple.svg)](https://kotlinlang.org)
@@ -58,7 +58,7 @@ dependencyResolutionManagement {
 
 // build.gradle.kts
 dependencies {
-    implementation("com.github.ajitkumarmaurya:imdb-kt:main-SNAPSHOT")
+    implementation("com.github.AjitkumarMaurya:imdbkt:main-SNAPSHOT")
 }
 ```
 
