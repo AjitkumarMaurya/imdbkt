@@ -132,7 +132,7 @@ fun SearchScreen(
                 }
                 SearchUiState.Empty -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No results found for "$query"", style = MaterialTheme.typography.bodyLarge)
+                        Text("No results found for \"$query\"", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
