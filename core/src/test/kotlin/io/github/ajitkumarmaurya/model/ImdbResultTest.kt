@@ -28,7 +28,7 @@ class ImdbResultTest {
     @Test
     fun `getOrNull returns null on Error`() {
         val result = ImdbResult.Error("fail")
-        assertThat(result.getOrNull()).isNull()
+        assertThat(result.getOrNull() as Any?).isNull()
     }
 
     @Test
