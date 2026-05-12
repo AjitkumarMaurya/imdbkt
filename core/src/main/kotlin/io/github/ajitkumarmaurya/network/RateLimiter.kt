@@ -1,6 +1,7 @@
 package io.github.ajitkumarmaurya.imdbkt.network
 
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -13,8 +14,13 @@ internal class RateLimiter(private val maxRequestsPerSecond: Int = 2) {
     private val lastRefillTime = AtomicLong(System.currentTimeMillis())
 
     fun acquire() {
-        refillIfNeeded()
-        semaphore.acquire()
+        // Poll so that refillIfNeeded() is called repeatedly until a permit
+        // becomes available. Without the loop, a blocked semaphore.acquire()
+        // never returns because nothing else triggers the refill.
+        while (true) {
+            refillIfNeeded()
+            if (semaphore.tryAcquire(POLL_INTERVAL_MS, TimeUnit.MILLISECONDS)) return
+        }
     }
 
     private fun refillIfNeeded() {
@@ -33,5 +39,6 @@ internal class RateLimiter(private val maxRequestsPerSecond: Int = 2) {
 
     companion object {
         private const val WINDOW_MS = 1_000L
+        private const val POLL_INTERVAL_MS = 50L
     }
 }
