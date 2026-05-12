@@ -12,20 +12,17 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Thin wrapper around OkHttpClient that adds browser-like headers, user-agent
- * rotation, rate limiting, and retry logic on every request.
+ * rotation, and retry logic on every request.
  */
 internal class HttpClient(config: ImdbConfig) {
-
-    private val rateLimiter = RateLimiter(config.maxRequestsPerSecond)
 
     val okHttp: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(config.connectTimeoutSeconds, TimeUnit.SECONDS)
         .readTimeout(config.readTimeoutSeconds, TimeUnit.SECONDS)
         .writeTimeout(config.writeTimeoutSeconds, TimeUnit.SECONDS)
         .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
-        .addInterceptor(RateLimitInterceptor(rateLimiter))
-        .addInterceptor(BrowserHeadersInterceptor())
         .addInterceptor(RetryInterceptor(config.maxRetries))
+        .addInterceptor(BrowserHeadersInterceptor())
         .apply {
             if (config.enableLogging) {
                 addNetworkInterceptor(
@@ -48,25 +45,27 @@ internal class HttpClient(config: ImdbConfig) {
 
     // ── Interceptors ──────────────────────────────────────────────────────────
 
-    private class RateLimitInterceptor(private val rateLimiter: RateLimiter) : Interceptor {
-        override fun intercept(chain: Interceptor.Chain): Response {
-            rateLimiter.acquire()
-            return chain.proceed(chain.request())
-        }
-    }
-
     private class BrowserHeadersInterceptor : Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
+            val ua = UserAgents.random()
             val request = chain.request().newBuilder()
-                .header("User-Agent", UserAgents.random())
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                .header("User-Agent", ua)
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
                 .header("Accept-Language", "en-US,en;q=0.9")
                 .header("Accept-Encoding", "gzip, deflate, br")
-                .header("Cache-Control", "no-cache")
+                .header("Connection", "keep-alive")
                 .header("Upgrade-Insecure-Requests", "1")
-                .header("Sec-Fetch-Dest", "document")
-                .header("Sec-Fetch-Mode", "navigate")
-                .header("Sec-Fetch-Site", "none")
+                .header("Referer", "https://www.imdb.com/")
+                .apply {
+                    // Sec-Fetch-* headers are Chromium-only; sending them with Safari/Firefox UAs
+                    // is a bot fingerprint. Only add for Chrome UAs.
+                    if (ua.contains("Chrome/")) {
+                        header("Sec-Fetch-Dest", "document")
+                        header("Sec-Fetch-Mode", "navigate")
+                        header("Sec-Fetch-Site", "same-origin")
+                        header("Sec-Fetch-User", "?1")
+                    }
+                }
                 .build()
             return chain.proceed(request)
         }

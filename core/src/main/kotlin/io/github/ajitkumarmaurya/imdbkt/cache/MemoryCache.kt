@@ -16,11 +16,9 @@ class MemoryCache(
 
     override fun get(key: String): String? {
         val entry = store[key] ?: return null
-        if (System.currentTimeMillis() > entry.expiresAt) {
-            store.remove(key)
-            return null
-        }
-        return entry.value
+        val expired = System.currentTimeMillis() > entry.expiresAt
+        if (expired) store.remove(key)
+        return entry.value.takeUnless { expired }
     }
 
     override fun put(key: String, value: String) {

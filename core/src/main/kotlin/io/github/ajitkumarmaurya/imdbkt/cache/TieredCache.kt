@@ -12,10 +12,7 @@ internal class TieredCache(
     override fun get(key: String): String? {
         val fromMemory = memory.get(key)
         if (fromMemory != null) return fromMemory
-
-        val fromDisk = disk.get(key) ?: return null
-        memory.put(key, fromDisk)
-        return fromDisk
+        return disk.get(key)?.also { memory.put(key, it) }
     }
 
     override fun put(key: String, value: String) {

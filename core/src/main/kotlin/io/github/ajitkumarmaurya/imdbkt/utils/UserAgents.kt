@@ -1,5 +1,6 @@
 package io.github.ajitkumarmaurya.imdbkt.utils
 
+@Suppress("MaxLineLength")
 internal object UserAgents {
 
     private val agents = listOf(

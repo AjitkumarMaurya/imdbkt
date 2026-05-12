@@ -56,6 +56,16 @@ internal fun JsonElement?.path(vararg keys: String): JsonElement? {
     return current
 }
 
+/** Navigate a dot-separated path string without a spread operator. */
+internal fun JsonElement?.pathDot(dotPath: String): JsonElement? {
+    var current: JsonElement? = this
+    for (key in dotPath.split(".")) {
+        current = (current as? JsonObject)?.get(key)
+        if (current == null) return null
+    }
+    return current
+}
+
 /** Collect string values from a JSON array via a key inside each element. */
 internal fun JsonArray?.strings(key: String): List<String> =
     this?.mapNotNull { it.string(key) } ?: emptyList()

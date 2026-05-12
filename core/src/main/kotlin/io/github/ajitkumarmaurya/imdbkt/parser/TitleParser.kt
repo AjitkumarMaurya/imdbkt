@@ -19,6 +19,7 @@ import io.github.ajitkumarmaurya.imdbkt.utils.int
 import io.github.ajitkumarmaurya.imdbkt.utils.long
 import io.github.ajitkumarmaurya.imdbkt.utils.obj
 import io.github.ajitkumarmaurya.imdbkt.utils.path
+import io.github.ajitkumarmaurya.imdbkt.utils.pathDot
 import io.github.ajitkumarmaurya.imdbkt.utils.secondsToMinutes
 import io.github.ajitkumarmaurya.imdbkt.utils.string
 import io.github.ajitkumarmaurya.imdbkt.utils.strings
@@ -39,6 +40,7 @@ import org.jsoup.nodes.Document
  * 3. Use Jsoup CSS selectors as last resort for elements that are
  *    only in raw HTML.
  */
+@Suppress("TooManyFunctions")
 internal class TitleParser(private val json: Json) {
 
     fun buildUrl(imdbId: String): String = ImdbSelectors.TITLE_URL.format(imdbId)
@@ -48,8 +50,8 @@ internal class TitleParser(private val json: Json) {
         val nextData = extractNextData(doc)
         val jsonLd = extractJsonLd(doc)
 
-        val aboveFold: JsonElement? = nextData?.path(*NextData.ABOVE_FOLD.split(".").toTypedArray())
-        val mainCol: JsonElement? = nextData?.path(*NextData.MAIN_COLUMN.split(".").toTypedArray())
+        val aboveFold: JsonElement? = nextData?.pathDot(NextData.ABOVE_FOLD)
+        val mainCol: JsonElement? = nextData?.pathDot(NextData.MAIN_COLUMN)
 
         return ImdbTitle(
             imdbId = imdbId,
@@ -70,9 +72,9 @@ internal class TitleParser(private val json: Json) {
             certificate = parseCertificate(aboveFold, doc),
             poster = parsePoster(aboveFold, jsonLd, doc),
             cast = parseCast(mainCol, doc),
-            directors = parseCredits(mainCol, "directors", doc),
-            writers = parseCredits(mainCol, "writers", doc),
-            creators = parseCredits(mainCol, "creators", doc),
+            directors = parseCredits(mainCol, "directors"),
+            writers = parseCredits(mainCol, "writers"),
+            creators = parseCredits(mainCol, "creators"),
             productionCompanies = parseProductionCompanies(mainCol, doc),
             seasons = parseSeasonCount(aboveFold, doc),
             relatedTitles = parseRelatedTitles(mainCol),
@@ -162,13 +164,18 @@ internal class TitleParser(private val json: Json) {
 
     private fun parseReleaseDate(aboveFold: JsonElement?): String? {
         val rd = aboveFold?.obj("releaseDate") ?: return null
-        val year = rd.int("year") ?: return null
-        val month = rd.int("month")
-        val day = rd.int("day")
-        return buildString {
-            if (day != null && month != null) append("$year-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}")
-            else if (month != null) append("$year-${month.toString().padStart(2,'0')}")
-            else append(year)
+        return rd.int("year")?.let { year ->
+            val month = rd.int("month")
+            val day = rd.int("day")
+            buildString {
+                when {
+                    day != null && month != null ->
+                        append("$year-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}")
+                    month != null ->
+                        append("$year-${month.toString().padStart(2, '0')}")
+                    else -> append(year)
+                }
+            }
         }
     }
 
@@ -245,7 +252,6 @@ internal class TitleParser(private val json: Json) {
     private fun parseCredits(
         mainCol: JsonElement?,
         key: String,
-        doc: Document,
     ): List<Credit> {
         val creditArray = (mainCol?.path(key) as? JsonArray) ?: return emptyList()
         return creditArray.flatMap { section ->

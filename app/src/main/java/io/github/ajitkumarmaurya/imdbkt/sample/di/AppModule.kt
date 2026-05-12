@@ -20,7 +20,6 @@ object AppModule {
         ImdbConfig(
             cacheDir = context.cacheDir,
             enableLogging = true,
-            maxRequestsPerSecond = 2,
         )
 
     @Provides

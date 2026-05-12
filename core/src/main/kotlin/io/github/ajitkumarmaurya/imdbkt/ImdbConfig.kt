@@ -15,22 +15,19 @@ import java.io.File
  * val config = ImdbConfig(
  *     enableLogging = BuildConfig.DEBUG,
  *     cacheDir = context.cacheDir,
- *     maxRequestsPerSecond = 1,
  * )
  * val imdb = Imdb(config)
  * ```
  */
 data class ImdbConfig(
     /** OkHttp connect timeout in seconds. */
-    val connectTimeoutSeconds: Long = 15,
-    /** OkHttp read timeout in seconds. */
-    val readTimeoutSeconds: Long = 30,
+    val connectTimeoutSeconds: Long = 30,
+    /** OkHttp read timeout in seconds. IMDb pages can be slow; 60s prevents premature timeout. */
+    val readTimeoutSeconds: Long = 60,
     /** OkHttp write timeout in seconds. */
     val writeTimeoutSeconds: Long = 15,
-    /** Max concurrent requests before rate-limiter blocks. */
-    val maxRequestsPerSecond: Int = 2,
-    /** Number of retry attempts on transient failures. */
-    val maxRetries: Int = 3,
+    /** Number of retry attempts on transient failures (includes 202 bot-challenges). */
+    val maxRetries: Int = 5,
     /** Enable OkHttp request/response logging (disable in production). */
     val enableLogging: Boolean = false,
     /** Directory for disk cache.  Pass `null` to use memory-only caching. */

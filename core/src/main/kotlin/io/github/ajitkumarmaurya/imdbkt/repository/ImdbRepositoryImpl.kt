@@ -23,7 +23,7 @@ import java.io.IOException
 import java.net.URLEncoder
 
 internal class ImdbRepositoryImpl(
-    private val config: ImdbConfig,
+    config: ImdbConfig,
     private val httpClient: HttpClient,
     private val cache: Cache,
 ) : ImdbRepository {
@@ -75,7 +75,12 @@ internal class ImdbRepositoryImpl(
                 val html = fetch(url)
                 val title = titleParser.parse(imdbId, html)
 
-                cache.put(cacheKey, json.encodeToString(title))
+                // Only cache a complete result — a blank title means IMDb served a
+                // bot-challenge page (e.g. HTTP 200/202 with no real content).
+                // Caching it would make every VM-level retry hit the stale entry.
+                if (title.title.isNotBlank()) {
+                    cache.put(cacheKey, json.encodeToString(title))
+                }
                 title
             }
         }
@@ -144,9 +149,12 @@ internal class ImdbRepositoryImpl(
 
     private fun fetch(url: String): String {
         val response = httpClient.get(url)
-        if (response.code == 404) throw NotFoundException("Not found: $url")
-        if (response.code == 429) throw RateLimitException("Rate limited by IMDb")
-        if (!response.isSuccessful) throw IOException("HTTP ${response.code}: $url")
+        val error: Exception? = when {
+            response.code == 404 -> NotFoundException("Not found: $url")
+            !response.isSuccessful -> IOException("HTTP ${response.code}: $url")
+            else -> null
+        }
+        if (error != null) throw error
         return response.body?.string() ?: throw IOException("Empty response body from: $url")
     }
 
@@ -160,7 +168,6 @@ internal class ImdbRepositoryImpl(
     }.getOrElse { e ->
         when (e) {
             is NotFoundException -> ImdbResult.Error(e.message ?: "Not found", e, ErrorType.NOT_FOUND)
-            is RateLimitException -> ImdbResult.Error(e.message ?: "Rate limited", e, ErrorType.RATE_LIMITED)
             is IOException -> ImdbResult.Error(e.message ?: "Network error", e, ErrorType.NETWORK)
             is kotlinx.serialization.SerializationException ->
                 ImdbResult.Error("Failed to parse response: ${e.message}", e, ErrorType.PARSING)
@@ -169,5 +176,4 @@ internal class ImdbRepositoryImpl(
     }
 
     private class NotFoundException(message: String) : Exception(message)
-    private class RateLimitException(message: String) : Exception(message)
 }

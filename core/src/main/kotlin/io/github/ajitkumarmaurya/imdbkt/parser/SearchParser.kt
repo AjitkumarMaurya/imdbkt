@@ -42,8 +42,9 @@ internal class SearchParser(private val json: Json) {
     }
 
     private fun parseSuggestionItem(item: JsonObject): ImdbSearchItem? {
-        val id = item.string("id")?.blankAsNull() ?: return null
-        val title = item.string("l")?.blankAsNull() ?: return null
+        val id = item.string("id")?.blankAsNull()
+        val title = item.string("l")?.blankAsNull()
+        if (id == null || title == null) return null
 
         val year = item.int("y")?.toString()
         val subtitle = item.string("s")?.blankAsNull()

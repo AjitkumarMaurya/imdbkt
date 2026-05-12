@@ -10,7 +10,6 @@ fun main() = runBlocking {
     val imdb = Imdb(
         ImdbConfig(
             enableLogging = true,
-            maxRequestsPerSecond = 1,
         )
     )
 

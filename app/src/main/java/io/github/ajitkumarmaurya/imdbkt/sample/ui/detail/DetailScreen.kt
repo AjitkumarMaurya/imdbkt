@@ -81,6 +81,20 @@ fun DetailScreen(
                 DetailUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+                is DetailUiState.Retrying -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Loading… (attempt ${state.attempt} of ${state.maxAttempts})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                        )
+                    }
+                }
                 is DetailUiState.Error -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center).padding(16.dp),

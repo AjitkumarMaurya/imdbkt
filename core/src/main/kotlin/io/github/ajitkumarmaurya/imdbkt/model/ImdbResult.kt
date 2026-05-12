@@ -48,7 +48,6 @@ enum class ErrorType {
     NETWORK,
     PARSING,
     NOT_FOUND,
-    RATE_LIMITED,
     UNKNOWN,
 }
 

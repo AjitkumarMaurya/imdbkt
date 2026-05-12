@@ -20,15 +20,14 @@ class DiskCache(
     override fun get(key: String): String? {
         val file = fileForKey(key)
         if (!file.exists()) return null
-
         return runCatching {
             val lines = file.readLines()
-            val expiresAt = lines.firstOrNull()?.toLongOrNull() ?: return null
-            if (System.currentTimeMillis() > expiresAt) {
-                file.delete()
-                return null
+            val expiresAt = lines.firstOrNull()?.toLongOrNull()
+            when {
+                expiresAt == null -> null
+                System.currentTimeMillis() > expiresAt -> { file.delete(); null }
+                else -> lines.drop(1).joinToString("\n")
             }
-            lines.drop(1).joinToString("\n")
         }.getOrNull()
     }
 
