@@ -1,0 +1,47 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+
+output-reports:
+  active: true
+
+complexity:
+  LongMethod:
+    threshold: 60
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8
+  TooManyFunctions:
+    thresholdInFiles: 30
+    thresholdInClasses: 20
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: true
+    excludeImports:
+      - 'kotlinx.coroutines.*'
+  MaxLineLength:
+    maxLineLength: 130
+  ForbiddenComment:
+    active: false
+
+naming:
+  FunctionNaming:
+    active: true
+    excludes: ['**/test/**', '**/*Test*']
