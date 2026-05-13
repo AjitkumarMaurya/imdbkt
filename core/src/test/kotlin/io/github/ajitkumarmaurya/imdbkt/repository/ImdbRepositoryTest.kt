@@ -81,7 +81,7 @@ class ImdbRepositoryTest {
         cache.put("search:dark", testJson.encodeToString(emptyList))
 
         val config = ImdbConfig(maxRetries = 0)
-        val repo = ImdbRepositoryImpl(config, HttpClient(config), cache)
+        val repo = ImdbRepositoryImpl(HttpClient(config), cache)
         val result = repo.search("dark")
         assertThat(result).isInstanceOf(ImdbResult.Empty::class.java)
     }
@@ -91,7 +91,6 @@ class ImdbRepositoryTest {
         // MemoryCache has no entry, so repo will try network — which will fail
         val config = ImdbConfig(connectTimeoutSeconds = 1, readTimeoutSeconds = 1, maxRetries = 0)
         val repo = ImdbRepositoryImpl(
-            config = config,
             httpClient = HttpClient(config),
             cache = MemoryCache(ttlMs = 0L),
         )
@@ -106,7 +105,7 @@ class ImdbRepositoryTest {
         val config = ImdbConfig(maxRetries = 0)
         val items: List<ImdbSearchItem> = SearchParser(testJson).parse(jsonBody)
         cache.put("search:interstellar", testJson.encodeToString(items))
-        return ImdbRepositoryImpl(config, HttpClient(config), cache)
+        return ImdbRepositoryImpl(HttpClient(config), cache)
     }
 
     private fun buildRepoWithTitleCache(html: String): ImdbRepositoryImpl {
@@ -114,6 +113,6 @@ class ImdbRepositoryTest {
         val config = ImdbConfig(maxRetries = 0)
         val title: ImdbTitle = TitleParser(testJson).parse("tt0816692", html)
         cache.put("title:tt0816692", testJson.encodeToString(title))
-        return ImdbRepositoryImpl(config, HttpClient(config), cache)
+        return ImdbRepositoryImpl(HttpClient(config), cache)
     }
 }

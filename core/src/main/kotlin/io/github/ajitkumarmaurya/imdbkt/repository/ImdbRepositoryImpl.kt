@@ -1,6 +1,5 @@
 package io.github.ajitkumarmaurya.imdbkt.repository
 
-import io.github.ajitkumarmaurya.imdbkt.ImdbConfig
 import io.github.ajitkumarmaurya.imdbkt.cache.Cache
 import io.github.ajitkumarmaurya.imdbkt.model.ErrorType
 import io.github.ajitkumarmaurya.imdbkt.model.ImdbActor
@@ -23,7 +22,6 @@ import java.io.IOException
 import java.net.URLEncoder
 
 internal class ImdbRepositoryImpl(
-    config: ImdbConfig,
     private val httpClient: HttpClient,
     private val cache: Cache,
 ) : ImdbRepository {

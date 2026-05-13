@@ -42,7 +42,6 @@ class Imdb(config: ImdbConfig = ImdbConfig()) {
     private val cache = config.buildCache()
 
     private val repository: ImdbRepository = ImdbRepositoryImpl(
-        config = config,
         httpClient = httpClient,
         cache = cache,
     )
