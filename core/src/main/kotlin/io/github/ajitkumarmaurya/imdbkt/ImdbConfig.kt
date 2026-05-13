@@ -27,7 +27,7 @@ data class ImdbConfig(
     /** OkHttp write timeout in seconds. */
     val writeTimeoutSeconds: Long = 15,
     /** Number of retry attempts on transient failures (includes 202 bot-challenges). */
-    val maxRetries: Int = 5,
+    val maxRetries: Int = 2,
     /** Enable OkHttp request/response logging (disable in production). */
     val enableLogging: Boolean = false,
     /** Directory for disk cache.  Pass `null` to use memory-only caching. */
@@ -38,6 +38,12 @@ data class ImdbConfig(
     val diskCacheTtlMs: Long = DiskCache.DEFAULT_TTL_MS,
     /** Max entries to hold in the in-memory LRU. */
     val memoryCacheMaxSize: Int = MemoryCache.DEFAULT_MAX_SIZE,
+    /**
+     * Firecrawl API key (https://firecrawl.dev).
+     * When provided, the library falls back to Firecrawl scraping whenever the
+     * normal IMDb crawler fails or returns a bot-challenge page.
+     */
+    val firecrawlApiKey: String? = null,
 ) {
     internal fun buildCache(): Cache {
         val memory = MemoryCache(memoryCacheMaxSize, memoryCacheTtlMs)

@@ -8,9 +8,11 @@ import io.github.ajitkumarmaurya.imdbkt.model.ImdbSearchItem
 import io.github.ajitkumarmaurya.imdbkt.model.ImdbTitle
 import io.github.ajitkumarmaurya.imdbkt.model.Season
 import io.github.ajitkumarmaurya.imdbkt.model.TrendingType
+import io.github.ajitkumarmaurya.imdbkt.network.FirecrawlClient
 import io.github.ajitkumarmaurya.imdbkt.network.HttpClient
 import io.github.ajitkumarmaurya.imdbkt.parser.ActorParser
 import io.github.ajitkumarmaurya.imdbkt.parser.EpisodeParser
+import io.github.ajitkumarmaurya.imdbkt.parser.FirecrawlMarkdownParser
 import io.github.ajitkumarmaurya.imdbkt.parser.SearchParser
 import io.github.ajitkumarmaurya.imdbkt.parser.TitleParser
 import io.github.ajitkumarmaurya.imdbkt.parser.TrendingParser
@@ -19,11 +21,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.IOException
-import java.net.URLEncoder
 
 internal class ImdbRepositoryImpl(
     private val httpClient: HttpClient,
     private val cache: Cache,
+    private val firecrawlClient: FirecrawlClient? = null,
 ) : ImdbRepository {
 
     private val json = Json {
@@ -37,49 +39,66 @@ internal class ImdbRepositoryImpl(
     private val actorParser = ActorParser(json)
     private val trendingParser = TrendingParser(json)
     private val episodeParser = EpisodeParser(json)
+    private val markdownParser = FirecrawlMarkdownParser()
 
     override suspend fun search(query: String): ImdbResult<List<ImdbSearchItem>> =
         withContext(Dispatchers.IO) {
             safeCall {
-                val url = searchParser.buildUrl(query)
                 val cacheKey = "search:$query"
-
-                val cached = cache.get(cacheKey)
-                if (cached != null) {
-                    return@safeCall json.decodeFromString<List<ImdbSearchItem>>(cached)
+                cache.get(cacheKey)?.let {
+                    return@safeCall json.decodeFromString<List<ImdbSearchItem>>(it)
                 }
 
-                val body = fetch(url)
-                val results = searchParser.parse(body)
+                // Primary path — IMDb suggestion API
+                val results = runCatching {
+                    searchParser.parse(fetch(searchParser.buildUrl(query)))
+                }.getOrNull()
 
-                if (results.isNotEmpty()) {
+                if (!results.isNullOrEmpty()) {
                     cache.put(cacheKey, json.encodeToString(results))
+                    return@safeCall results
                 }
-                results
+
+                // Fallback — Firecrawl search
+                val fallback = firecrawlClient?.let { fc ->
+                    markdownParser.parseSearchHits(fc.search(query))
+                }
+                if (!fallback.isNullOrEmpty()) {
+                    cache.put(cacheKey, json.encodeToString(fallback))
+                }
+                fallback ?: results ?: emptyList()
             }
         }
 
     override suspend fun getTitle(imdbId: String): ImdbResult<ImdbTitle> =
         withContext(Dispatchers.IO) {
             safeCall {
-                val url = titleParser.buildUrl(imdbId)
                 val cacheKey = "title:$imdbId"
-
-                val cached = cache.get(cacheKey)
-                if (cached != null) {
-                    return@safeCall json.decodeFromString<ImdbTitle>(cached)
+                cache.get(cacheKey)?.let {
+                    return@safeCall json.decodeFromString<ImdbTitle>(it)
                 }
 
-                val html = fetch(url)
-                val title = titleParser.parse(imdbId, html)
+                val url = titleParser.buildUrl(imdbId)
 
-                // Only cache a complete result — a blank title means IMDb served a
-                // bot-challenge page (e.g. HTTP 200/202 with no real content).
-                // Caching it would make every VM-level retry hit the stale entry.
-                if (title.title.isNotBlank()) {
+                // Primary path — direct HTML fetch + __NEXT_DATA__ parser
+                val title = runCatching {
+                    titleParser.parse(imdbId, fetch(url))
+                }.getOrNull()
+
+                if (title != null && title.title.isNotBlank()) {
                     cache.put(cacheKey, json.encodeToString(title))
+                    return@safeCall title
                 }
-                title
+
+                // Fallback — Firecrawl scrape + markdown parser
+                val scraped = firecrawlClient?.scrape(url)
+                    ?: throw IOException("Primary fetch failed and no Firecrawl API key configured")
+
+                val fallback = markdownParser.parseTitle(imdbId, scraped.markdown, scraped.posterUrl)
+                if (fallback.title.isNotBlank()) {
+                    cache.put(cacheKey, json.encodeToString(fallback))
+                }
+                fallback
             }
         }
 
@@ -108,18 +127,28 @@ internal class ImdbRepositoryImpl(
                 val url = trendingParser.buildUrl(type)
                 val cacheKey = "trending:${type.name}"
 
-                val cached = cache.get(cacheKey)
-                if (cached != null) {
-                    return@safeCall json.decodeFromString<List<ImdbSearchItem>>(cached)
+                cache.get(cacheKey)?.let {
+                    return@safeCall json.decodeFromString<List<ImdbSearchItem>>(it)
                 }
 
-                val html = fetch(url)
-                val results = trendingParser.parse(html)
+                // Primary path
+                val results = runCatching {
+                    trendingParser.parse(fetch(url))
+                }.getOrNull()
 
-                if (results.isNotEmpty()) {
+                if (!results.isNullOrEmpty()) {
                     cache.put(cacheKey, json.encodeToString(results))
+                    return@safeCall results
                 }
-                results
+
+                // Fallback — Firecrawl search for trending IMDb titles
+                val fallback = firecrawlClient?.let { fc ->
+                    markdownParser.parseSearchHits(fc.search("top movies imdb"))
+                }
+                if (!fallback.isNullOrEmpty()) {
+                    cache.put(cacheKey, json.encodeToString(fallback))
+                }
+                fallback ?: results ?: emptyList()
             }
         }
 

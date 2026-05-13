@@ -6,6 +6,7 @@ import io.github.ajitkumarmaurya.imdbkt.model.ImdbSearchItem
 import io.github.ajitkumarmaurya.imdbkt.model.ImdbTitle
 import io.github.ajitkumarmaurya.imdbkt.model.Season
 import io.github.ajitkumarmaurya.imdbkt.model.TrendingType
+import io.github.ajitkumarmaurya.imdbkt.network.FirecrawlClient
 import io.github.ajitkumarmaurya.imdbkt.network.HttpClient
 import io.github.ajitkumarmaurya.imdbkt.repository.ImdbRepository
 import io.github.ajitkumarmaurya.imdbkt.repository.ImdbRepositoryImpl
@@ -40,10 +41,12 @@ class Imdb(config: ImdbConfig = ImdbConfig()) {
 
     private val httpClient = HttpClient(config)
     private val cache = config.buildCache()
+    private val firecrawlClient = config.firecrawlApiKey?.let { FirecrawlClient(it) }
 
     private val repository: ImdbRepository = ImdbRepositoryImpl(
         httpClient = httpClient,
         cache = cache,
+        firecrawlClient = firecrawlClient,
     )
 
     /**

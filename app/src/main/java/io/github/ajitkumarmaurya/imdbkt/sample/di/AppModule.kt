@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.ajitkumarmaurya.imdbkt.Imdb
 import io.github.ajitkumarmaurya.imdbkt.ImdbConfig
+import io.github.ajitkumarmaurya.imdbkt.sample.BuildConfig
 import javax.inject.Singleton
 
 @Module
@@ -19,7 +20,8 @@ object AppModule {
     fun provideImdbConfig(@ApplicationContext context: Context): ImdbConfig =
         ImdbConfig(
             cacheDir = context.cacheDir,
-            enableLogging = true,
+            enableLogging = BuildConfig.DEBUG,
+            firecrawlApiKey = BuildConfig.FIRECRAWL_API_KEY.takeIf { it.isNotBlank() },
         )
 
     @Provides

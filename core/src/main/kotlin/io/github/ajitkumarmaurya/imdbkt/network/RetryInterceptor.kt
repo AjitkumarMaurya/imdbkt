@@ -46,7 +46,7 @@ internal class RetryInterceptor(private val maxRetries: Int = 3) : Interceptor {
     }
 
     companion object {
-        private const val INITIAL_DELAY_MS = 500L
-        private const val MAX_DELAY_MS = 8_000L
+        private const val INITIAL_DELAY_MS = 300L
+        private const val MAX_DELAY_MS = 1_500L
     }
 }
