@@ -9,10 +9,13 @@ import io.github.ajitkumarmaurya.imdbkt.model.ImdbTitle
 import io.github.ajitkumarmaurya.imdbkt.network.HttpClient
 import io.github.ajitkumarmaurya.imdbkt.parser.SearchParser
 import io.github.ajitkumarmaurya.imdbkt.parser.TitleParser
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import java.io.IOException
 
 class ImdbRepositoryTest {
 
@@ -88,11 +91,12 @@ class ImdbRepositoryTest {
 
     @Test
     fun `search returns Error on network failure`() = runTest {
-        // MemoryCache has no entry, so repo will try network — which will fail
-        val config = ImdbConfig(connectTimeoutSeconds = 1, readTimeoutSeconds = 1, maxRetries = 0)
+        val mockHttpClient = mockk<HttpClient>()
+        every { mockHttpClient.get(any()) } throws IOException("Connection refused")
+
         val repo = ImdbRepositoryImpl(
-            httpClient = HttpClient(config),
-            cache = MemoryCache(ttlMs = 0L),
+            httpClient = mockHttpClient,
+            cache = MemoryCache(),
         )
         val result = repo.search("test")
         assertThat(result).isInstanceOf(ImdbResult.Error::class.java)
