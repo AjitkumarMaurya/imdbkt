@@ -1,57 +1,18 @@
 package io.github.ajitkumarmaurya.imdbkt
 
-import io.github.ajitkumarmaurya.imdbkt.cache.Cache
-import io.github.ajitkumarmaurya.imdbkt.cache.DiskCache
-import io.github.ajitkumarmaurya.imdbkt.cache.MemoryCache
-import io.github.ajitkumarmaurya.imdbkt.cache.TieredCache
 import java.io.File
 
-/**
- * Configuration for the [Imdb] client.
- *
- * All parameters have sensible defaults; override only what you need.
- *
- * ```kotlin
- * val config = ImdbConfig(
- *     enableLogging = BuildConfig.DEBUG,
- *     cacheDir = context.cacheDir,
- * )
- * val imdb = Imdb(config)
- * ```
- */
 data class ImdbConfig(
-    /** OkHttp connect timeout in seconds. */
-    val connectTimeoutSeconds: Long = 30,
-    /** OkHttp read timeout in seconds. IMDb pages can be slow; 60s prevents premature timeout. */
-    val readTimeoutSeconds: Long = 60,
-    /** OkHttp write timeout in seconds. */
-    val writeTimeoutSeconds: Long = 15,
-    /** Number of retry attempts on transient failures (includes 202 bot-challenges). */
-    val maxRetries: Int = 2,
-    /** Enable OkHttp request/response logging (disable in production). */
-    val enableLogging: Boolean = false,
-    /** Directory for disk cache.  Pass `null` to use memory-only caching. */
-    val cacheDir: File? = null,
-    /** Memory cache TTL in milliseconds. */
-    val memoryCacheTtlMs: Long = MemoryCache.DEFAULT_TTL_MS,
-    /** Disk cache TTL in milliseconds. */
-    val diskCacheTtlMs: Long = DiskCache.DEFAULT_TTL_MS,
-    /** Max entries to hold in the in-memory LRU. */
-    val memoryCacheMaxSize: Int = MemoryCache.DEFAULT_MAX_SIZE,
-    /**
-     * Firecrawl API key (https://firecrawl.dev).
-     * When provided, the library falls back to Firecrawl scraping whenever the
-     * normal IMDb crawler fails or returns a bot-challenge page.
-     */
+    val connectTimeoutMs: Long = 10_000L,
+    val readTimeoutMs: Long = 15_000L,
+    val maxRetries: Int = 3,
+    val baseRetryDelayMs: Long = 400L,
+    val memoryCacheMaxEntries: Int = 250,
+    val searchCacheTtlMs: Long = 10 * 60 * 1000L,
+    val metadataCacheTtlMs: Long = 60 * 60 * 1000L,
+    val diskCacheDir: File? = null,
+    val acceptLanguage: String = "en-US,en;q=0.9",
+    val customUserAgent: String? = null,
     val firecrawlApiKey: String? = null,
-) {
-    internal fun buildCache(): Cache {
-        val memory = MemoryCache(memoryCacheMaxSize, memoryCacheTtlMs)
-        val dir = cacheDir
-        return if (dir != null) {
-            TieredCache(memory, DiskCache(File(dir, "imdb-kt"), diskCacheTtlMs))
-        } else {
-            memory
-        }
-    }
-}
+    val firecrawlBaseUrl: String = "https://api.firecrawl.dev"
+)

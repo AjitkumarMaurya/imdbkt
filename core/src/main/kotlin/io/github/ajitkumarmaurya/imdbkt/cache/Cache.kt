@@ -1,12 +1,8 @@
 package io.github.ajitkumarmaurya.imdbkt.cache
 
-/**
- * Generic read-through cache contract.  Both keys and values are strings
- * (values are serialized JSON) so the cache layer stays decoupled from models.
- */
-interface Cache {
-    fun get(key: String): String?
-    fun put(key: String, value: String)
-    fun remove(key: String)
-    fun clear()
+interface Cache<K, V> {
+    suspend fun get(key: K): V?
+    suspend fun put(key: K, value: V, ttlMs: Long? = null)
+    suspend fun remove(key: K)
+    suspend fun clear()
 }

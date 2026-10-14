@@ -4,28 +4,19 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ImdbActor(
-    val imdbId: String,
+    val id: String,
     val name: String,
     val bio: String? = null,
-    val profileImage: String? = null,
     val birthDate: String? = null,
-    val birthPlace: String? = null,
-    val deathDate: String? = null,
-    val height: String? = null,
-    val knownFor: List<ImdbSearchItem> = emptyList(),
-    val filmography: List<FilmographyItem> = emptyList(),
-    val awards: String? = null,
-    val spousesCount: Int? = null,
-    val otherNames: List<String> = emptyList(),
+    val imageUrl: String? = null,
+    val knownFor: List<KnownForTitle> = emptyList()
 )
 
 @Serializable
-data class FilmographyItem(
-    val imdbId: String,
+data class KnownForTitle(
+    val id: String,
     val title: String,
-    val year: String? = null,
+    val year: Int? = null,
     val role: String? = null,
-    val characters: List<String> = emptyList(),
-    val type: TitleType = TitleType.UNKNOWN,
-    val poster: String? = null,
+    val posterUrl: String? = null
 )

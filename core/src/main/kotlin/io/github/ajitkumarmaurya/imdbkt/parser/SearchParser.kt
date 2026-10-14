@@ -1,72 +1,49 @@
 package io.github.ajitkumarmaurya.imdbkt.parser
 
+import io.github.ajitkumarmaurya.imdbkt.model.ImdbError
+import io.github.ajitkumarmaurya.imdbkt.model.ImdbResult
 import io.github.ajitkumarmaurya.imdbkt.model.ImdbSearchItem
-import io.github.ajitkumarmaurya.imdbkt.model.TitleType
-import io.github.ajitkumarmaurya.imdbkt.parser.selectors.ImdbSelectors
-import io.github.ajitkumarmaurya.imdbkt.utils.asString
-import io.github.ajitkumarmaurya.imdbkt.utils.blankAsNull
-import io.github.ajitkumarmaurya.imdbkt.utils.int
-import io.github.ajitkumarmaurya.imdbkt.utils.obj
-import io.github.ajitkumarmaurya.imdbkt.utils.string
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 
-/**
- * Parses the IMDb suggestion API response.
- *
- * Endpoint: https://v3.sg.media-imdb.com/suggestion/x/{query}.json
- *
- * The response is a JSON object with a "d" array of suggestion items.
- * This endpoint is considerably more stable than the HTML search page.
- */
-internal class SearchParser(private val json: Json) {
+class SearchParser {
+    private val json = Json { ignoreUnknownKeys = true }
 
-    fun buildUrl(query: String): String {
-        val encoded = query.trim().lowercase()
-            .replace(" ", "_")
-            .take(MAX_QUERY_LENGTH)
-        return ImdbSelectors.SUGGESTION_URL.format(encoded)
-    }
+    @Serializable
+    private data class SuggestResponse(@SerialName("d") val results: List<SuggestItem> = emptyList())
 
-    fun parse(responseBody: String): List<ImdbSearchItem> {
-        return runCatching {
-            val root = json.parseToJsonElement(responseBody).jsonObject
-            val items = root["d"]?.jsonArray ?: return emptyList()
-            items.mapNotNull { element ->
-                runCatching { parseSuggestionItem(element.jsonObject) }.getOrNull()
+    @Serializable
+    private data class SuggestItem(
+        val id: String = "",
+        @SerialName("l") val title: String = "",
+        @SerialName("y") val year: Int? = null,
+        @SerialName("qid") val type: String = "title",
+        @SerialName("s") val stars: String? = null,
+        @SerialName("rank") val rank: Int? = null,
+        @SerialName("i") val image: SuggestImage? = null
+    )
+
+    @Serializable
+    private data class SuggestImage(val imageUrl: String? = null)
+
+    fun parse(jsonBody: String): ImdbResult<List<ImdbSearchItem>> = runCatching {
+        val parsed = json.decodeFromString<SuggestResponse>(jsonBody)
+        val items = parsed.results
+            .filter { it.id.startsWith("tt") || it.id.startsWith("nm") }
+            .map {
+                ImdbSearchItem(
+                    id = it.id,
+                    title = it.title,
+                    year = it.year,
+                    type = it.type,
+                    stars = it.stars,
+                    posterUrl = it.image?.imageUrl,
+                    rank = it.rank
+                )
             }
-        }.getOrElse { emptyList() }
-    }
-
-    private fun parseSuggestionItem(item: JsonObject): ImdbSearchItem? {
-        val id = item.string("id")?.blankAsNull()
-        val title = item.string("l")?.blankAsNull()
-        if (id == null || title == null) return null
-
-        val year = item.int("y")?.toString()
-        val subtitle = item.string("s")?.blankAsNull()
-        val rank = item.int("rank")
-        val qid = item.string("qid")
-        val q = item.string("q")
-
-        val type = TitleType.from(qid ?: q)
-        val poster = item.obj("i")?.string("imageUrl")
-
-        return ImdbSearchItem(
-            imdbId = id,
-            title = title,
-            year = year,
-            type = type,
-            poster = poster,
-            subtitle = subtitle,
-            rank = rank,
-        )
-    }
-
-    companion object {
-        private const val MAX_QUERY_LENGTH = 20
+        ImdbResult.Success(items)
+    }.getOrElse { e ->
+        ImdbResult.Failure(ImdbError.ParsingError("SearchParser", "Failed to parse search JSON: ${e.message}", e))
     }
 }

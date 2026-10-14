@@ -1,49 +1,40 @@
 package io.github.ajitkumarmaurya.imdbkt.cache
 
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * LRU-like in-memory cache with a configurable TTL per entry and max size.
- */
-class MemoryCache(
-    private val maxSize: Int = DEFAULT_MAX_SIZE,
-    private val ttlMs: Long = DEFAULT_TTL_MS,
-) : Cache {
+class MemoryCache<K, V>(
+    private val maxSize: Int = 250,
+    private val defaultTtlMs: Long = 15 * 60 * 1000L,
+    private val clock: () -> Long = { System.currentTimeMillis() }
+) : Cache<K, V> {
 
-    private data class Entry(val value: String, val expiresAt: Long)
+    private data class Entry<V>(val value: V, val expiresAt: Long)
 
-    private val store = ConcurrentHashMap<String, Entry>(maxSize)
-
-    override fun get(key: String): String? {
-        val entry = store[key] ?: return null
-        val expired = System.currentTimeMillis() > entry.expiresAt
-        if (expired) store.remove(key)
-        return entry.value.takeUnless { expired }
+    private val mutex = Mutex()
+    private val map = object : LinkedHashMap<K, Entry<V>>(maxSize, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Entry<V>>?): Boolean = size > maxSize
     }
 
-    override fun put(key: String, value: String) {
-        if (store.size >= maxSize) evictOldest()
-        store[key] = Entry(value, System.currentTimeMillis() + ttlMs)
-    }
-
-    override fun remove(key: String) {
-        store.remove(key)
-    }
-
-    override fun clear() = store.clear()
-
-    private fun evictOldest() {
-        val now = System.currentTimeMillis()
-        // Remove all expired first
-        store.entries.removeIf { it.value.expiresAt <= now }
-        // If still over capacity, remove the earliest-expiring entry
-        if (store.size >= maxSize) {
-            store.entries.minByOrNull { it.value.expiresAt }?.key?.let { store.remove(it) }
+    override suspend fun get(key: K): V? = mutex.withLock {
+        val entry = map[key] ?: return@withLock null
+        if (clock() > entry.expiresAt) {
+            map.remove(key)
+            return@withLock null
         }
+        entry.value
     }
 
-    companion object {
-        const val DEFAULT_MAX_SIZE = 100
-        const val DEFAULT_TTL_MS = 10 * 60 * 1_000L // 10 minutes
+    override suspend fun put(key: K, value: V, ttlMs: Long?) = mutex.withLock {
+        map[key] = Entry(value, clock() + (ttlMs ?: defaultTtlMs))
+    }
+
+    override suspend fun remove(key: K) = mutex.withLock {
+        map.remove(key)
+        Unit
+    }
+
+    override suspend fun clear() = mutex.withLock {
+        map.clear()
     }
 }
